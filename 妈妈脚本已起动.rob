@@ -1,3 +1,4 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ROB5201314/ROBScript2/refs/heads/main/我不是源码.塔菲喵"))()
 print("看了新世纪福音战士一夜之间会写脚本")
 --eva乃神作也
 --新世紀エヴァンゲリオン
