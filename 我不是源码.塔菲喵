@@ -1,1 +1,206 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local targetName = "MChim114514"
+local imageUrl = "https://raw.githubusercontent.com/ROB5201314/SBTP/refs/heads/main/Screenshot_20260719_220621.jpg"
+local countFile = "meet_count.txt"
+local imageFile = "author_meet.jpg"
+local activeTags = {}
+local shownPlayers = {}
 
+local function fileExists(name)
+    local ok, res = pcall(function() return readfile(name) end)
+    return ok and res ~= nil
+end
+
+local function writeFile(name, data)
+    if writefile then writefile(name, data) return true
+    elseif savefile then savefile(name, data) return true end
+    return false
+end
+
+local function readFile(name)
+    if readfile then return readfile(name) end
+    return nil
+end
+
+local function getAsset(path)
+    if getcustomasset then return getcustomasset(path) end
+    return path
+end
+
+local function downloadImage()
+    if fileExists(imageFile) then return getAsset(imageFile) end
+    local ok, data = pcall(game.HttpGet, game, imageUrl)
+    if ok and data and #data > 100 then
+        if writeFile(imageFile, data) then return getAsset(imageFile) end
+    end
+    return nil
+end
+
+local function getCount()
+    if fileExists(countFile) then
+        local c = tonumber(readFile(countFile))
+        if c then return c end
+    end
+    return 0
+end
+
+local function setCount(c)
+    writeFile(countFile, tostring(c))
+end
+
+-- 头顶标签
+local function createTag(player)
+    if activeTags[player] then return end
+    local char = player.Character
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if not head then
+        head = char:WaitForChild("Head", 5)
+        if not head then return end
+    end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 200, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.SourceSans
+    label.TextScaled = true
+    label.RichText = true
+
+    local text = "ROB脚本作者"
+    local chars = {}
+    for c in text:gmatch(utf8.charpattern) do table.insert(chars, c) end
+    local rich = ""
+    for i, c in ipairs(chars) do
+        local t = (i - 1) / (#chars - 1)
+        local color = Color3.new(0, 0, 0):Lerp(Color3.new(1, 0, 0), t)
+        rich = rich .. string.format('<font color="#%02x%02x%02x">%s</font>',
+            math.floor(color.R*255), math.floor(color.G*255), math.floor(color.B*255), c)
+    end
+    label.Text = rich
+    label.Parent = billboard
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 1
+    stroke.Parent = label
+
+    activeTags[player] = billboard
+
+    local function clearTag()
+        if activeTags[player] then
+            activeTags[player]:Destroy()
+            activeTags[player] = nil
+        end
+    end
+    player.CharacterRemoving:Connect(clearTag)
+    player.CharacterAdded:Connect(function(newChar)
+        clearTag()
+        local newHead = newChar:WaitForChild("Head", 5)
+        if newHead then createTag(player) end
+    end)
+end
+
+local function showPopup(count)
+    local asset = downloadImage()
+    if not asset then return end
+
+    local plr = Players.LocalPlayer
+    if not plr then return end
+    local gui = Instance.new("ScreenGui")
+    gui.ResetOnSpawn = false
+    gui.Parent = plr:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 400, 0, 0)
+    frame.Position = UDim2.new(0.5, -200, 0.2, 0)
+    frame.BackgroundTransparency = 1
+    frame.Parent = gui
+
+    local image = Instance.new("ImageLabel")
+    image.Size = UDim2.new(1, 0, 0, 0)
+    image.BackgroundTransparency = 1
+    image.Image = asset
+    image.ScaleType = Enum.ScaleType.Fit
+    image.ImageTransparency = 0.15
+    image.Parent = frame
+    local aspect = 960 / 2265
+    image.Size = UDim2.new(1, 0, 0, 400 * aspect)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 30)
+    label.Position = UDim2.new(0, 0, 1, 5)
+    label.BackgroundTransparency = 1
+    label.Text = "你已遇见 ROB脚本作者 " .. count .. " 次"
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.SourceSansBold
+    label.TextSize = 20
+    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    label.TextStrokeTransparency = 0.3
+    label.Parent = image
+
+    local dragging = false
+    local dragStart, startPos
+
+    image.InputBegan:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not dragging then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+
+    image.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    image.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    task.delay(3, function()
+        gui:Destroy()
+    end)
+end
+
+local function onTarget(player)
+    if player.Name == targetName then
+        createTag(player)
+        if not shownPlayers[player] then
+            shownPlayers[player] = true
+            local count = getCount() + 1
+            setCount(count)
+            showPopup(count)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(onTarget)
+for _, p in ipairs(Players:GetPlayers()) do
+    onTarget(p)
+end
+
+Players.PlayerRemoving:Connect(function(p)
+    shownPlayers[p] = nil
+end)
+
+task.spawn(function()
+    while task.wait(5) do
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Name == targetName and not activeTags[p] then
+                createTag(p)
+            end
+        end
+    end
+end)
